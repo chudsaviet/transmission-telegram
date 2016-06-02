@@ -39,19 +39,24 @@ class TransmissionBroker:
     def add_torrent(self, chat_id, url):
         self.conn[chat_id].add_torrent(url)
 
-    def remove_torrent(self, chat_id, torrent_id):
+    def remove_torrent(self, chat_id, torrent_ids):
 
         # Check is not embedded to transmissionrpc module, so we have to do it ourselves
-        torrent_found = False
+        missing_torrents = list()
         torrents = self.conn[chat_id].get_torrents()
-        for torrent in torrents:
-            if torrent.id == torrent_id:
-                torrent_found = True
-                break
-        if not torrent_found:
-            raise TransmissionError('Torrent %d not found' % torrent_id)
+        for tid in torrent_ids:
+            id_found = False
+            for torrent in torrents:
+                if tid == torrent.id:
+                    id_found = True
+                    break
+            if not id_found:
+                missing_torrents.append(tid)
 
-        self.conn[chat_id].remove_torrent(torrent_id)
+        if len(missing_torrents) > 0:
+            raise TransmissionError('Torrents %s not found' % missing_torrents)
+
+        self.conn[chat_id].remove_torrent(torrent_ids)
 
     def check_connection(self, chat_id):
         if chat_id not in self.conn:

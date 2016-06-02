@@ -12,12 +12,12 @@ LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)
 VERSION = '1'
 HELP_TEXT = 'Transmission Telegram bot version %s\n\n' \
             'Usage:\n' \
-            '/help - display this help' \
+            '/help - display this help\n' \
             '/set_credentials address=<ADDRESS> port=<PORT> user=<user> password=<password>' \
             ' - set credentials and connect to Transmission\n' \
             '/list - retrieve list of current torrents and their statuses\n' \
             '/add <URI> - add torrent and start download\n' \
-            '/remove <TORRENT_ID> - remove torrent by ID. ID can be determined using /list command\n' \
+            '/remove <TORRENT_ID> <TORRENT_ID> ... - remove torrents by IDs. ID can be determined using /list command\n' \
             % VERSION
 global_args = None
 broker = TransmissionBroker()
@@ -65,23 +65,26 @@ def remove_command(bot, update):
     if not check_connection(bot, update):
         return
 
+    torrent_ids = list()
     try:
-        torrent_id = int(update.message.text.split(' ', 1)[1])
+        for string_id in update.message.text.split(' ')[1:]:
+            torrent_ids.append(int(string_id))
     except ValueError as e:
         bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Wrong torrent ID: %s\nException:\n%s" % (update.message.text.split(' ', 1)[1], str(e)))
+                        text="Wrong torrent IDs: %s\nException:\n%s" % (update.message.text.split(' ', 1)[1], str(e)))
+        return
 
     bot.sendMessage(chat_id=update.message.chat_id,
-                    text="Removing torrent %d..." % torrent_id)
+                    text="Removing torrents: %s ..." % torrent_ids)
 
     try:
-        broker.remove_torrent(update.message.chat_id, torrent_id)
+        broker.remove_torrent(update.message.chat_id, torrent_ids)
 
         bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Torrent successfully removed")
+                        text="Torrents successfully removed")
     except TransmissionError as e:
         bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Exception happened while trying to remove torrent:\n%s" % str(e))
+                        text="Exception happened while trying to remove torrents:\n%s\nNothing removed." % str(e))
 
 
 def add_command(bot, update):
