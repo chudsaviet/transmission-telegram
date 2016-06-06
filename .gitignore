@@ -65,3 +65,5 @@ target/
 .idea/
 
 /run.sh
+
+config.ini
