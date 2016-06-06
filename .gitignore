@@ -67,3 +67,4 @@ target/
 /run.sh
 
 config.ini
+authorized_chats.txt

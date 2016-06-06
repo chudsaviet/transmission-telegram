@@ -24,8 +24,15 @@ class BotConfig:
         except ValueError:
             raise ValueError('Port ''%s'' is invalid' % port_string)
 
-        self.user = bot_section.get('user', '')
-        self.password = bot_section.get('password', '')
+        try:
+            self.user = bot_section.get('user')
+        except KeyError:
+            self.user = None
+
+        try:
+            self.password = bot_section.get('password')
+        except KeyError:
+            self.password = None
 
         if self.password and not self.user:
             raise Exception('Password with no user name is meaningless')
@@ -37,6 +44,11 @@ class BotConfig:
         self.secret = bot_section.get('secret', '')
         if not self.secret:
             raise Exception('Secret is required')
+
+        try:
+            self.persistence_file = bot_section.get('persistence_file')
+        except KeyError:
+            self.persistence_file = None
 
     def __str__(self):
         result = 'Transmission address: %s\n' \
@@ -54,9 +66,12 @@ class BotConfig:
 
         result += 'Token: %s\n' % self.token
         result += 'Secret is present\n'
+        result += 'Persistence file: %s\n' % self.persistence_file
 
         return result
 
     def __repr__(self):
-        return '{address:''%s'' port:%d user:''%s'' password:''%s'' token:''%s'' secret:''%s''}' % \
-               (self.address, self.port, self.user, self.password, self.token, self.secret)
+        return '{address:''%s'' port:%d user:''%s'' password:''%s'' ' \
+               'token:''%s'' secret:''%s'' persistence_file:''%s''}' \
+               % (self.address, self.port, self.user, self.password, \
+                  self.token, self.secret, self.persistence_file)

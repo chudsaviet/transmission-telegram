@@ -7,7 +7,7 @@ class NotAuthorizedChatException(Exception):
 
 
 class TransmissionBroker:
-    def __init__(self, config):
+    def __init__(self, config, persistence):
         self.conn = Client(
             config.address,
             port=config.port,
@@ -15,7 +15,7 @@ class TransmissionBroker:
             password=config.password
         )
         self.secret = config.secret
-        self.authorized_chats = list()
+        self.persistence = persistence
 
     @staticmethod
     def pretty_torrents_list(torrents):
@@ -54,12 +54,12 @@ class TransmissionBroker:
         self.conn.remove_torrent(torrent_ids)
 
     def check_chat_authorization(self, chat_id):
-        if chat_id not in self.authorized_chats:
+        if not self.persistence.check_chat_id(chat_id):
             raise NotAuthorizedChatException()
 
     def authorize_chat(self, chat_id, secret):
         if self.secret == secret:
-            self.authorized_chats.append(chat_id)
+            self.persistence.add_chat_id(chat_id)
             return True
         else:
             return False

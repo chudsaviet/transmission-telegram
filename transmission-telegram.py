@@ -1,6 +1,7 @@
 import argparse
 import logging
 from bot_config import BotConfig
+from persistence import Persistence
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
@@ -161,7 +162,7 @@ def main():
     logging.info('Will use next config parameters:\n%s' % config)
 
     global global_broker
-    global_broker = TransmissionBroker(config)
+    global_broker = TransmissionBroker(config, Persistence(config.persistence_file))
 
     run(config)
 
