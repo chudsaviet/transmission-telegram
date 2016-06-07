@@ -51,22 +51,22 @@ class BotConfig:
             self.persistence_file = None
 
     def __str__(self):
-        result = 'Transmission address: %s\n' \
+        result = 'Transmission address: %s \n' \
                  'Port: %d\n' % (self.address, self.port)
 
         if not self.user:
-            result += 'No user name\n'
+            result += 'No user name \n'
         else:
-            result += 'User: %s\n' % self.user
+            result += 'User: %s \n' % self.user
 
         if not self.password:
-            result += 'No password\n'
+            result += 'No password \n'
         else:
-            result += 'Password is present\n'
+            result += 'Password is present \n'
 
-        result += 'Token: %s\n' % self.token
-        result += 'Secret is present\n'
-        result += 'Persistence file: %s\n' % self.persistence_file
+        result += 'Token: %s \n' % self.token
+        result += 'Secret is present \n'
+        result += 'Persistence file: %s \n' % self.persistence_file
 
         return result
 

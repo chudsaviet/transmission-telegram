@@ -1,5 +1,6 @@
 import argparse
 import logging
+import logging.handlers
 import sys
 from bot_config import BotConfig
 from persistence import Persistence
@@ -15,7 +16,8 @@ LINUX = (platform.system()=='Linux')
 if LINUX:
     import daemon
 
-LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)s'
+FULL_LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)s'
+SHORT_LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s: %(message)s'
 VERSION = '2'
 HELP_TEXT = 'Transmission Telegram bot version %s\n\n' \
             'Usage:\n' \
@@ -172,27 +174,37 @@ def main():
                         help='Debug log level')
     args = parser.parse_args()
 
+    # Setup logging
+    logger = logging.getLogger()
+    formatter = logging.Formatter(FULL_LOGGING_FORMAT)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+        logging.info('Debug log level activated')
+    else:
+        logger.setLevel(logging.INFO)
+
     if LINUX and args.daemon_pid_file:
+
         # Exit if we are in parent process
         if daemon.daemonize(args.daemon_pid_file):
             return
-       
-    # Setup logging
-    if args.log:
-        log_file = open(args.log, 'a')
-        sys.stdout.close()
-        sys.stdout = log_file
-        sys.stderr.close()
-        sys.stderr = log_file
+
+        # Print logs to syslog
+        handler = logging.handlers.SysLogHandler(address = '/dev/log')
+        formatter = logging.Formatter(SHORT_LOGGING_FORMAT)
+        handler.setFormatter(formatter)
+        logger.handlers = []
+        logger.addHandler(handler)
+
     
     # Close stdin
     sys.stdin.close()
     
-    if args.verbose:
-        logging.basicConfig(format=LOGGING_FORMAT, level=logging.DEBUG)
-        logging.info('Debug log level activated')
-    else:
-        logging.basicConfig(format=LOGGING_FORMAT, level=logging.INFO)
+    
         
     run(args)
 
