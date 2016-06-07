@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 from bot_config import BotConfig
 from persistence import Persistence
 from telegram.ext import Updater
@@ -8,6 +9,11 @@ from telegram.ext import MessageHandler
 from telegram.ext import Filters
 from transmission_broker import TransmissionBroker, NotAuthorizedChatException
 from transmissionrpc.error import TransmissionError
+
+import platform
+LINUX = (platform.system()=='Linux')
+if LINUX:
+    import daemon
 
 LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)s'
 VERSION = '2'
@@ -19,6 +25,7 @@ HELP_TEXT = 'Transmission Telegram bot version %s\n\n' \
             '/add <URI> - add torrent and start download\n' \
             '/remove <TORRENT_ID> <TORRENT_ID> ... - remove torrents by IDs\n' \
             % VERSION
+
 
 # Sorry, using global variable here is inevitable because of Telegram library's API
 global_broker = None
@@ -112,7 +119,15 @@ def secret_command(bot, update):
                         text='Secret is wrong')
 
 
-def run(config):
+def run(args):
+    logging.info('Starting bot')
+
+    config = BotConfig(args.config)
+    logging.info('Will use next config parameters:\n%s' % config)
+
+    global global_broker
+    global_broker = TransmissionBroker(config, Persistence(config.persistence_file))
+
     updater = Updater(token=config.token)
     dispatcher = updater.dispatcher
     dispatcher.add_error_handler(error_command)
@@ -148,24 +163,40 @@ def main():
     )
     parser.add_argument('--config', required=True,
                         help='Path to config ini-formatted file')
+    if LINUX:
+        parser.add_argument('--daemon_pid_file', required=False,
+                            help='Run as daemon and save PID to specified file')
+    parser.add_argument('--log', required=False,
+                            help='File to store log')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Debug log level')
     args = parser.parse_args()
 
+    if LINUX and args.daemon_pid_file:
+        # Exit if we are in parent process
+        if daemon.daemonize(args.daemon_pid_file):
+            return
+       
+    # Setup logging
+    if args.log:
+        log_file = open(args.log, 'a')
+        sys.stdout.close()
+        sys.stdout = log_file
+        sys.stderr.close()
+        sys.stderr = log_file
+    
+    # Close stdin
+    sys.stdin.close()
+    
     if args.verbose:
         logging.basicConfig(format=LOGGING_FORMAT, level=logging.DEBUG)
         logging.info('Debug log level activated')
     else:
         logging.basicConfig(format=LOGGING_FORMAT, level=logging.INFO)
-
-    config = BotConfig(args.config)
-    logging.info('Will use next config parameters:\n%s' % config)
-
-    global global_broker
-    global_broker = TransmissionBroker(config, Persistence(config.persistence_file))
-
-    run(config)
+        
+    run(args)
 
 
 if __name__ == '__main__':
     main()
+
