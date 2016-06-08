@@ -51,27 +51,27 @@ class BotConfig:
             self.persistence_file = None
 
     def __str__(self):
-        result = 'Transmission address: %s \n' \
-                 'Port: %d\n' % (self.address, self.port)
+        result = '{address:<%s> ' \
+                 'port:<%d> ' % (self.address, self.port)
 
         if not self.user:
-            result += 'No user name \n'
+            result += 'user:None '
         else:
-            result += 'User: %s \n' % self.user
+            result += 'user:<%s> ' % self.user
 
         if not self.password:
-            result += 'No password \n'
+            result += 'password:None'
         else:
-            result += 'Password is present \n'
+            result += 'password:present '
 
-        result += 'Token: %s \n' % self.token
-        result += 'Secret is present \n'
-        result += 'Persistence file: %s \n' % self.persistence_file
+        result += 'token:present '
+        result += 'secret:present '
+        result += 'persistence_file:<%s>}' % self.persistence_file
 
         return result
 
     def __repr__(self):
         return '{address:''%s'' port:%d user:''%s'' password:''%s'' ' \
                'token:''%s'' secret:''%s'' persistence_file:''%s''}' \
-               % (self.address, self.port, self.user, self.password, \
+               % (self.address, self.port, self.user, self.password,
                   self.token, self.secret, self.persistence_file)
