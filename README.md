@@ -1,5 +1,5 @@
 # transmission-telegram
-Telegram chat bot to control Transmission.
+Telegram chat bot to control Transmission.  
 Sorry, only magnet links are supported now.
 
 Install as daemon under Linux using systemd:
