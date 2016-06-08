@@ -1,11 +1,9 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
 *$py.class
 
 # C extensions
 *.so
-/run.sh
 
 # Distribution / packaging
 .Python
@@ -64,3 +62,9 @@ target/
 
 #Idea project directory
 .idea/
+
+/run.sh
+
+config.ini
+authorized_chats.txt
+bot.pid

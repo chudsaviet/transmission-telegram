@@ -1,0 +1,13 @@
+[Unit]
+Description=Telegram bot to control Transmission
+After=syslog.target network.target
+
+[Service]
+User=root
+Type=forking
+PIDFile=/var/run/transmission-telegram.pid
+ExecStart=/usr/sbin/transmission-telegram --config /etc/transmission-telegram/config.ini  --daemon_pid_file /var/run/transmission-telegram.pid
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
