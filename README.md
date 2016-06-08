@@ -19,7 +19,7 @@ Install as daemon under Linux using systemd:
 6. Create directory in /etc and copy config in it:  
     `mkdir /etc/transmission-telegram`  
     `cp config.ini.example /etc/transmission-telegram/config.ini`  
-7. Generate secret:
+7. Generate secret:  
     `dd if=/dev/urandom bs=4096 cnt=1 | sha256sum`
 8. Edit config to set Transmission and Telegram credentials, and secret:  
     `editor /etc/transmission-telegram/config.ini`
