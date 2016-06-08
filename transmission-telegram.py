@@ -1,7 +1,10 @@
+#!/usr/bin/env python3
+
 import argparse
 import logging
 import logging.handlers
 import sys
+import os
 from bot_config import BotConfig
 from persistence import Persistence
 from telegram.ext import Updater
@@ -12,12 +15,13 @@ from transmission_broker import TransmissionBroker, NotAuthorizedChatException
 from transmissionrpc.error import TransmissionError
 
 import platform
+
 LINUX = (platform.system()=='Linux')
 if LINUX:
-    import daemon
+    SYSLOG_DEVICE = '/dev/log'
 
-FULL_LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)s'
-SHORT_LOGGING_FORMAT = '%(filename)s:%(lineno)d# %(levelname)s: %(message)s'
+LOGGING_FORMAT_STDOUT = '%(filename)s:%(lineno)d# %(levelname)s %(asctime)s: %(message)s'
+LOGGING_FORMAT_SYSLOG = 'transmission-telegram: %(filename)s:%(lineno)d# %(levelname)s: %(message)s'
 VERSION = '2'
 HELP_TEXT = 'Transmission Telegram bot version %s\n\n' \
             'Usage:\n' \
@@ -121,6 +125,60 @@ def secret_command(bot, update):
                         text='Secret is wrong')
 
 
+def setup_logging(linux_daemon, verbose):
+    logger = logging.getLogger()
+
+    if linux_daemon:
+        # If we are Linux daemon, print logs to syslog
+        handler = logging.handlers.SysLogHandler(address=SYSLOG_DEVICE)
+        formatter = logging.Formatter(LOGGING_FORMAT_SYSLOG)
+    else:
+        # If we are not Linux daemon, just print logs to stdout
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(LOGGING_FORMAT_STDOUT)
+
+    handler.setFormatter(formatter)
+    # Clean handlers
+    logger.handlers = []
+    # Add appropriate handler
+    logger.addHandler(handler)
+
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        logging.info('Debug log level activated')
+    else:
+        logger.setLevel(logging.INFO)
+
+
+def daemonize(pid_file):
+    # Fork off the parent process
+    pid = os.fork()
+
+    # If we are in parent process - save child PID and return True
+    # If we are in child process - proceed to next steps
+    if pid > 0:
+        file = open(pid_file, 'w')
+        file.write(str(pid))
+        file.close()
+        return True
+
+    # Change the file mode mask
+    os.umask(0)
+
+    # Create a new SID for the child process
+    os.setsid()
+
+    # Change the current working directory
+    os.chdir('/')
+
+    # Close IO
+    sys.stdin.close()
+    sys.stdout.close()
+    sys.stderr.close()
+
+    return False
+
+
 def run(args):
     logging.info('Starting bot')
 
@@ -174,40 +232,19 @@ def main():
                         help='Debug log level')
     args = parser.parse_args()
 
-    # Setup logging
-    logger = logging.getLogger()
-    formatter = logging.Formatter(FULL_LOGGING_FORMAT)
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
-        logging.info('Debug log level activated')
-    else:
-        logger.setLevel(logging.INFO)
-
     if LINUX and args.daemon_pid_file:
-
         # Exit if we are in parent process
-        if daemon.daemonize(args.daemon_pid_file):
-            return
+        if daemonize(args.daemon_pid_file):
+            return 0
+        setup_logging(linux_daemon=True, verbose=args.verbose)
+    else:
+        setup_logging(linux_daemon=False, verbose=args.verbose)
 
-        # Print logs to syslog
-        handler = logging.handlers.SysLogHandler(address = '/dev/log')
-        formatter = logging.Formatter(SHORT_LOGGING_FORMAT)
-        handler.setFormatter(formatter)
-        logger.handlers = []
-        logger.addHandler(handler)
-
-    
-    # Close stdin
-    sys.stdin.close()
-    
-    
-        
-    run(args)
-
+    try:
+        run(args)
+    except Exception as e:
+        logging.error(e)
+        return 1
 
 if __name__ == '__main__':
     main()

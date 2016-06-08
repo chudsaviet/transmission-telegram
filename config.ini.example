@@ -1,0 +1,8 @@
+[Bot]
+address = localhost
+port = 9091
+user = <user>
+password = <password>
+token = <telegram_token>
+secret = <secret>
+persistence_file = /var/lib/transmission-telegram/authorized_chats
