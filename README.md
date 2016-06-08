@@ -19,15 +19,17 @@ Install as daemon under Linux using systemd:
 6. Create directory in /etc and copy config in it:  
     `mkdir /etc/transmission-telegram`  
     `cp config.ini.example /etc/transmission-telegram/config.ini`  
-7. Edit config to set Transmission and Telegram credentials:  
+7. Generate secret:
+    `dd if=/dev/urandom bs=4096 cnt=1 | sha256sum`
+8. Edit config to set Transmission and Telegram credentials, and secret:  
     `editor /etc/transmission-telegram/config.ini`
-8. Copy systemd service definition to systemd directory:  
+9. Copy systemd service definition to systemd directory:  
     `cp scripts/transmission-telegram.service /etc/systemd/system/`
-9. If you are running bot at the same machine as Transmission, it would be better to start bot after Transmission.
+10. If you are running bot at the same machine as Transmission, it would be better to start bot after Transmission.
     Just edit `/etc/systemd/system/transmission-telegram.service` and add transmission-daemon.service to `after` section.
-10. Reload systemd daemons, enable and run transmission-telegram:  
+11. Reload systemd daemons, enable and run transmission-telegram:  
     `systemctl daemon-reload`  
     `systemctl enable transmission-telegram.service`  
     `systemctl start transmission-telegram`  
-11. Check status of the daemon:  
+12. Check status of the daemon:  
     `systemctl status transmission-telegram`
