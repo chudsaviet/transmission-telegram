@@ -5,6 +5,8 @@ import logging
 import logging.handlers
 import sys
 import os
+import time
+import signal
 from bot_config import BotConfig
 from persistence import Persistence
 from telegram.ext import Updater
@@ -16,7 +18,7 @@ from transmissionrpc.error import TransmissionError
 
 import platform
 
-LINUX = (platform.system()=='Linux')
+LINUX = (platform.system() == 'Linux')
 if LINUX:
     SYSLOG_DEVICE = '/dev/log'
 
@@ -33,8 +35,10 @@ HELP_TEXT = 'Transmission Telegram bot version %s\n\n' \
             % VERSION
 
 
-# Sorry, using global variable here is inevitable because of Telegram library's API
+# Sorry, using global variables here is inevitable because of Telegram library's API
 global_broker = None
+global_updater = None
+global_error_exit = False
 
 
 def check_connection(bot, update):
@@ -46,6 +50,29 @@ def check_connection(bot, update):
         return False
 
     return True
+
+
+def transmission_error(bot, update, exception):
+    # Will send error to chat and syslog, and exit. Systemd should restart bot.
+    error_message = "Transmission exception happened:\n%s" % str(exception)
+    bot.sendMessage(chat_id=update.message.chat_id,
+                    text=error_message)
+    logging.error(error_message)
+
+    global global_error_exit
+    global_error_exit = True
+    # SIGTERM is to be handled by Updater
+    #os.kill(os.getpid(), signal.SIGABRT)
+
+
+def telegram_error(bot, update, error):
+    # Will only send error to syslog and exit. Systemd should restart bot.
+    error_message = 'Update "%s" caused error "%s"' % (update, error)
+    logging.error(error_message)
+    global global_error_exit
+    global_error_exit = True
+    # SIGTERM is to be handled by Updater
+    # os.kill(os.getpid(), signal.SIGABRT)
 
 
 def help_command(bot, update):
@@ -75,8 +102,7 @@ def remove_command(bot, update):
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="Torrents successfully removed")
     except TransmissionError as e:
-        bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Exception happened while trying to remove torrents:\n%s\nNothing removed." % str(e))
+        transmission_error(bot, update, e)
 
 
 def add_command(bot, update):
@@ -92,8 +118,7 @@ def add_command(bot, update):
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="Torrent successfully added")
     except TransmissionError as e:
-        bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Exception happened while trying to add torrent:\n%s" % str(e))
+        transmission_error(bot, update, e)
 
 
 def list_command(bot, update):
@@ -102,15 +127,12 @@ def list_command(bot, update):
 
     bot.sendMessage(chat_id=update.message.chat_id,
                     text="Got it, retrieving list of current torrents...")
-
-    torrents = global_broker.retrieve_list(update.message.chat_id)
-
-    bot.sendMessage(chat_id=update.message.chat_id,
-                    text="Here are current torrents list:\n%s" % str(torrents))
-
-
-def error_command(bot, update, error):
-    logging.warning('Update "%s" caused error "%s"' % (update, error))
+    try:
+        torrents = global_broker.retrieve_list(update.message.chat_id)
+        bot.sendMessage(chat_id=update.message.chat_id,
+                        text="Here are current torrents list:\n%s" % str(torrents))
+    except TransmissionError as e:
+        transmission_error(bot, update, e)
 
 
 def secret_command(bot, update):
@@ -188,9 +210,10 @@ def run(args):
     global global_broker
     global_broker = TransmissionBroker(config, Persistence(config.persistence_file))
 
-    updater = Updater(token=config.token)
-    dispatcher = updater.dispatcher
-    dispatcher.add_error_handler(error_command)
+    global global_updater
+    global_updater = Updater(token=config.token)
+    dispatcher = global_updater.dispatcher
+    dispatcher.add_error_handler(telegram_error)
 
     list_handler = CommandHandler('list', list_command)
     dispatcher.add_handler(list_handler)
@@ -213,8 +236,16 @@ def run(args):
     unknown_handler = MessageHandler([Filters.command], help_command)
     dispatcher.add_handler(unknown_handler)
 
-    updater.start_polling()
-    updater.idle()
+    global_updater.start_polling()
+
+    global global_error_exit
+    global_updater.is_idle = True
+    while global_updater.is_idle:
+        if global_error_exit:
+            global_updater.stop()
+            sys.exit(1)
+
+        time.sleep(0.1)
 
 
 def main():
@@ -235,7 +266,7 @@ def main():
     if LINUX and args.daemon_pid_file:
         # Exit if we are in parent process
         if daemonize(args.daemon_pid_file):
-            return 0
+            sys.exit()
         setup_logging(linux_daemon=True, verbose=args.verbose)
     else:
         setup_logging(linux_daemon=False, verbose=args.verbose)
@@ -244,7 +275,7 @@ def main():
         run(args)
     except Exception as e:
         logging.error(e)
-        return 1
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
