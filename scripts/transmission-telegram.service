@@ -8,6 +8,8 @@ Type=forking
 PIDFile=/var/run/transmission-telegram.pid
 ExecStart=/usr/sbin/transmission-telegram --config /etc/transmission-telegram/config.ini  --daemon_pid_file /var/run/transmission-telegram.pid
 Restart=on-failure
+RestartSec=1s
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
