@@ -67,4 +67,4 @@ target/
 
 config.ini
 authorized_chats.txt
-bot.pid
+*.pid
