@@ -15,7 +15,7 @@ Install as daemon under Linux using systemd:
     `cd /opt/transmission-telegram`  
     `git clone https://github.com/Chudsaviet/transmission-telegram.git`
 5. Create symlink and data directory:  
-    `ln -s /opt/transmission-telegram/transmission-telegram.py /us/sbin/transmission-telegram`  
+    `ln -s /opt/transmission-telegram/transmission-telegram.py /usr/sbin/transmission-telegram`  
     `mkdir /var/lib/transmission-telegram`
 6. Create directory in /etc and copy config in it:  
     `mkdir /etc/transmission-telegram`  
